@@ -88,14 +88,43 @@
       window.addEventListener("DOMContentLoaded", () => {
         const today = new Date().toISOString().split("T")[0];
         document.getElementById("date").value = today;
+        document.getElementById("date").setAttribute("min", today); // no past dates
       });
 
       const scriptURL =
         "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzMzA0MzI1MjZlNTUzMTUxMzYi_pc";
       const form = document.forms["submit-to-google-sheet"];
 
+      // Validation for alphabets only
+      function isAlphabetic(value) {
+        return /^[A-Za-z ]+$/.test(value);
+      }
+
       form.addEventListener("submit", (e) => {
         e.preventDefault();
+
+        // Validate first name
+        const firstName = document.getElementById("name").value.trim();
+        if (!isAlphabetic(firstName)) {
+          swal("Error", "First Name should contain only alphabets.", "error");
+          return;
+        }
+
+        // Validate last name
+        const lastName = document.getElementById("lastName").value.trim();
+        if (!isAlphabetic(lastName)) {
+          swal("Error", "Last Name should contain only alphabets.", "error");
+          return;
+        }
+
+        // Validate date (should not be past)
+        const today = new Date().toISOString().split("T")[0];
+        const selectedDate = document.getElementById("date").value;
+        if (selectedDate < today) {
+          swal("Error", "Date cannot be in the past.", "error");
+          return;
+        }
+
         var formData = new FormData(form);
 
         fetch(scriptURL, { method: "POST", body: formData })
@@ -106,6 +135,7 @@
             document.getElementById("date").value = new Date()
               .toISOString()
               .split("T")[0];
+            document.getElementById("date").setAttribute("min", today);
           })
           .catch((error) => {
             swal("Error", "Something went wrong. please try again!", "error");
