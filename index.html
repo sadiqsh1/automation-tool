@@ -11,7 +11,6 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@7.12.15/dist/sweetalert2.all.min.js"></script>
     <style>
       .form-container {
         max-width: 500px;
@@ -20,6 +19,18 @@
         padding: 20px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         background-color: #fff;
+      }
+      .error-message {
+        color: red;
+        font-size: 12px;
+        display: none;
+      }
+      .success-message {
+        color: green;
+        font-size: 14px;
+        display: none;
+        margin-top: 10px;
+        text-align: center;
       }
     </style>
   </head>
@@ -39,6 +50,7 @@
               placeholder="First Name"
               required
             />
+            <div class="error-message" id="nameError">First name should contain only alphabets.</div>
           </div>
           <!-- Last Name -->
           <div class="form-group">
@@ -51,6 +63,7 @@
               placeholder="Last Name"
               required
             />
+            <div class="error-message" id="lastNameError">Last name should contain only alphabets.</div>
           </div>
           <!-- Email -->
           <div class="form-group">
@@ -63,6 +76,7 @@
               placeholder="Email"
               required
             />
+            <div class="error-message" id="emailError">Please enter a valid email address.</div>
           </div>
           <!-- Date -->
           <div class="form-group">
@@ -74,11 +88,13 @@
               id="date"
               required
             />
+            <div class="error-message" id="dateError">Date cannot be in the past.</div>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block">
             Submit
           </button>
+          <div class="success-message" id="successMsg">✅ Submitted Successfully!</div>
         </form>
       </div>
     </div>
@@ -95,51 +111,92 @@
         "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzMzA0MzI1MjZlNTUzMTUxMzYi_pc";
       const form = document.forms["submit-to-google-sheet"];
 
-      // Validation for alphabets only
+      // Validation helpers
       function isAlphabetic(value) {
         return /^[A-Za-z ]+$/.test(value);
+      }
+      function isValidEmail(value) {
+        return /^[^ ]+@[^ ]+\.[a-z]{2,}$/i.test(value);
+      }
+
+      // Inline error display
+      function showError(id, show) {
+        document.getElementById(id).style.display = show ? "block" : "none";
       }
 
       form.addEventListener("submit", (e) => {
         e.preventDefault();
 
-        // Validate first name
         const firstName = document.getElementById("name").value.trim();
-        if (!isAlphabetic(firstName)) {
-          swal("Error", "First Name should contain only alphabets.", "error");
-          return;
-        }
-
-        // Validate last name
         const lastName = document.getElementById("lastName").value.trim();
-        if (!isAlphabetic(lastName)) {
-          swal("Error", "Last Name should contain only alphabets.", "error");
-          return;
+        const email = document.getElementById("email").value.trim();
+        const selectedDate = document.getElementById("date").value;
+        const today = new Date().toISOString().split("T")[0];
+
+        let valid = true;
+
+        if (!isAlphabetic(firstName)) {
+          showError("nameError", true);
+          valid = false;
+        } else {
+          showError("nameError", false);
         }
 
-        // Validate date (should not be past)
-        const today = new Date().toISOString().split("T")[0];
-        const selectedDate = document.getElementById("date").value;
-        if (selectedDate < today) {
-          swal("Error", "Date cannot be in the past.", "error");
-          return;
+        if (!isAlphabetic(lastName)) {
+          showError("lastNameError", true);
+          valid = false;
+        } else {
+          showError("lastNameError", false);
         }
+
+        if (!isValidEmail(email)) {
+          showError("emailError", true);
+          valid = false;
+        } else {
+          showError("emailError", false);
+        }
+
+        if (selectedDate < today) {
+          showError("dateError", true);
+          valid = false;
+        } else {
+          showError("dateError", false);
+        }
+
+        if (!valid) return;
 
         var formData = new FormData(form);
 
         fetch(scriptURL, { method: "POST", body: formData })
           .then((response) => {
-            swal("Done", "Submitted Successfully.", "success");
             form.reset();
-            // refill today's date after reset
             document.getElementById("date").value = new Date()
               .toISOString()
               .split("T")[0];
             document.getElementById("date").setAttribute("min", today);
+            document.getElementById("successMsg").style.display = "block";
+            setTimeout(() => {
+              document.getElementById("successMsg").style.display = "none";
+            }, 4000);
           })
           .catch((error) => {
-            swal("Error", "Something went wrong. please try again!", "error");
+            alert("Something went wrong. please try again!");
           });
+      });
+
+      // Live validation on input
+      document.getElementById("name").addEventListener("input", function () {
+        showError("nameError", !isAlphabetic(this.value.trim()));
+      });
+      document.getElementById("lastName").addEventListener("input", function () {
+        showError("lastNameError", !isAlphabetic(this.value.trim()));
+      });
+      document.getElementById("email").addEventListener("input", function () {
+        showError("emailError", !isValidEmail(this.value.trim()));
+      });
+      document.getElementById("date").addEventListener("input", function () {
+        const today = new Date().toISOString().split("T")[0];
+        showError("dateError", this.value < today);
       });
     </script>
   </body>
