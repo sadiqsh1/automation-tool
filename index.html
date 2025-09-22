@@ -20,17 +20,9 @@
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         background-color: #fff;
       }
-      .error-message {
+      .error-msg {
         color: red;
-        font-size: 12px;
-        display: none;
-      }
-      .success-message {
-        color: green;
-        font-size: 14px;
-        display: none;
-        margin-top: 10px;
-        text-align: center;
+        font-size: 0.9rem;
       }
     </style>
   </head>
@@ -38,7 +30,7 @@
     <div class="container">
       <div class="form-container">
         <h4 class="text-center mb-4">Form Submission to Google Sheet</h4>
-        <form id="submit-to-google-sheet">
+        <form id="submit-to-google-sheet" novalidate>
           <!-- First Name -->
           <div class="form-group">
             <label for="name">First Name:</label>
@@ -50,7 +42,7 @@
               placeholder="First Name"
               required
             />
-            <div class="error-message" id="nameError">First name should contain only alphabets.</div>
+            <small id="nameError" class="error-msg"></small>
           </div>
           <!-- Last Name -->
           <div class="form-group">
@@ -63,7 +55,7 @@
               placeholder="Last Name"
               required
             />
-            <div class="error-message" id="lastNameError">Last name should contain only alphabets.</div>
+            <small id="lastNameError" class="error-msg"></small>
           </div>
           <!-- Email -->
           <div class="form-group">
@@ -76,7 +68,7 @@
               placeholder="Email"
               required
             />
-            <div class="error-message" id="emailError">Please enter a valid email address.</div>
+            <small id="emailError" class="error-msg"></small>
           </div>
           <!-- Date -->
           <div class="form-group">
@@ -88,13 +80,12 @@
               id="date"
               required
             />
-            <div class="error-message" id="dateError">Date cannot be in the past.</div>
+            <small id="dateError" class="error-msg"></small>
           </div>
 
           <button type="submit" class="btn btn-primary btn-block">
             Submit
           </button>
-          <div class="success-message" id="successMsg">✅ Submitted Successfully!</div>
         </form>
       </div>
     </div>
@@ -111,92 +102,80 @@
         "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzMzA0MzI1MjZlNTUzMTUxMzYi_pc";
       const form = document.forms["submit-to-google-sheet"];
 
-      // Validation helpers
+      // Validation regex
       function isAlphabetic(value) {
         return /^[A-Za-z ]+$/.test(value);
       }
-      function isValidEmail(value) {
-        return /^[^ ]+@[^ ]+\.[a-z]{2,}$/i.test(value);
-      }
 
-      // Inline error display
-      function showError(id, show) {
-        document.getElementById(id).style.display = show ? "block" : "none";
+      // Email regex: only letters/numbers/@/.
+      function isValidEmail(value) {
+        return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value) &&
+               !/[!#$%^&*(){}[\]<>?\/\\|`~]/.test(value);
       }
 
       form.addEventListener("submit", (e) => {
         e.preventDefault();
+        let isValid = true;
 
+        // Clear previous errors
+        document.getElementById("nameError").textContent = "";
+        document.getElementById("lastNameError").textContent = "";
+        document.getElementById("emailError").textContent = "";
+        document.getElementById("dateError").textContent = "";
+
+        // Validate first name
         const firstName = document.getElementById("name").value.trim();
-        const lastName = document.getElementById("lastName").value.trim();
-        const email = document.getElementById("email").value.trim();
-        const selectedDate = document.getElementById("date").value;
-        const today = new Date().toISOString().split("T")[0];
-
-        let valid = true;
-
         if (!isAlphabetic(firstName)) {
-          showError("nameError", true);
-          valid = false;
-        } else {
-          showError("nameError", false);
+          document.getElementById("nameError").textContent =
+            "First Name should contain only alphabets.";
+          isValid = false;
         }
 
+        // Validate last name
+        const lastName = document.getElementById("lastName").value.trim();
         if (!isAlphabetic(lastName)) {
-          showError("lastNameError", true);
-          valid = false;
-        } else {
-          showError("lastNameError", false);
+          document.getElementById("lastNameError").textContent =
+            "Last Name should contain only alphabets.";
+          isValid = false;
         }
 
+        // Validate email
+        const email = document.getElementById("email").value.trim();
         if (!isValidEmail(email)) {
-          showError("emailError", true);
-          valid = false;
-        } else {
-          showError("emailError", false);
+          document.getElementById("emailError").textContent =
+            "Invalid email (no special characters allowed except @ and .)";
+          isValid = false;
         }
 
+        // Validate date (should not be past)
+        const today = new Date().toISOString().split("T")[0];
+        const selectedDate = document.getElementById("date").value;
         if (selectedDate < today) {
-          showError("dateError", true);
-          valid = false;
-        } else {
-          showError("dateError", false);
+          document.getElementById("dateError").textContent =
+            "Date cannot be in the past.";
+          isValid = false;
         }
 
-        if (!valid) return;
+        if (!isValid) return;
 
         var formData = new FormData(form);
 
         fetch(scriptURL, { method: "POST", body: formData })
           .then((response) => {
+            alert("Submitted Successfully.");
             form.reset();
+            // refill today's date after reset
             document.getElementById("date").value = new Date()
               .toISOString()
               .split("T")[0];
-            document.getElementById("date").setAttribute("min", today);
-            document.getElementById("successMsg").style.display = "block";
-            setTimeout(() => {
-              document.getElementById("successMsg").style.display = "none";
-            }, 4000);
+            document.getElementById("date").setAttribute(
+              "min",
+              new Date().toISOString().split("T")[0]
+            );
           })
           .catch((error) => {
             alert("Something went wrong. please try again!");
           });
-      });
-
-      // Live validation on input
-      document.getElementById("name").addEventListener("input", function () {
-        showError("nameError", !isAlphabetic(this.value.trim()));
-      });
-      document.getElementById("lastName").addEventListener("input", function () {
-        showError("lastNameError", !isAlphabetic(this.value.trim()));
-      });
-      document.getElementById("email").addEventListener("input", function () {
-        showError("emailError", !isValidEmail(this.value.trim()));
-      });
-      document.getElementById("date").addEventListener("input", function () {
-        const today = new Date().toISOString().split("T")[0];
-        showError("dateError", this.value < today);
       });
     </script>
   </body>
